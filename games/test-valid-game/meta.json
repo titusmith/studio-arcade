@@ -1,0 +1,8 @@
+{
+  "title": "Star Catcher",
+  "student": "Sample Game",
+  "tag": "Arcade",
+  "input": ["mouse", "touch", "keyboard"],
+  "devices": ["desktop", "tablet", "phone"],
+  "instructions": "Move with the mouse, your finger, or the arrow keys.\nCatch gold stars. Dodge red ones.\nP to pause."
+}
