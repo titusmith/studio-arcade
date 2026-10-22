@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!--
+  SAMPLE GAME: an example of an arcade-ready folder.
+  - index.html at the top of the folder
+  - no internet links: everything is in this file
+  - fills any window, works with mouse, touch and keyboard
+  - sound starts only after the first input
+  - P pauses (Escape is left for the arcade)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Star Catcher</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0b1f; overflow: hidden; touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(function () {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+
+  // Fill the window and stay sharp on retina screens.
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // Sound: created on the first input, as browsers require.
+  let audio = null;
+  function beep(freq) {
+    if (!audio) return;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.15, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.25);
+    o.connect(g).connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + 0.25);
+  }
+
+  let best = 0;
+  try { best = Number(localStorage.getItem("star-catcher-best")) || 0; } catch (e) {}
+
+  const state = { mode: "title", paused: false, x: 0.5, score: 0, lives: 3, stars: [], t: 0, keys: {} };
+
+  function start() {
+    if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    Object.assign(state, { mode: "play", paused: false, score: 0, lives: 3, stars: [], t: 0 });
+  }
+
+  // Input: pointer (mouse + touch) and keyboard.
+  canvas.addEventListener("pointerdown", (e) => {
+    if (state.mode !== "play") { start(); return; }
+    state.x = e.clientX / W;
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (state.mode === "play" && (e.pointerType === "mouse" || e.buttons)) state.x = e.clientX / W;
+  });
+  window.addEventListener("keydown", (e) => {
+    state.keys[e.key] = true;
+    if (state.mode !== "play" && (e.key === " " || e.key === "Enter")) { start(); return; }
+    if (e.key === "p" || e.key === "P") state.paused = !state.paused;
+  });
+  window.addEventListener("keyup", (e) => { state.keys[e.key] = false; });
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (state.mode === "play" && !state.paused) update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function update(dt) {
+    state.t += dt;
+    const k = state.keys;
+    if (k.ArrowLeft || k.a || k.A) state.x -= dt * 0.9;
+    if (k.ArrowRight || k.d || k.D) state.x += dt * 0.9;
+    state.x = Math.max(0.05, Math.min(0.95, state.x));
+
+    const rate = 0.9 + state.t / 25;
+    if (Math.random() < dt * rate) {
+      state.stars.push({ x: 0.05 + Math.random() * 0.9, y: -0.05, v: 0.22 + Math.random() * 0.12 + state.t / 200, bad: Math.random() < 0.18 });
+    }
+    const catcherY = 0.88, half = 0.07;
+    state.stars = state.stars.filter((s) => {
+      s.y += s.v * dt;
+      if (s.y >= catcherY - 0.02 && s.y <= catcherY + 0.03 && Math.abs(s.x - state.x) < half) {
+        if (s.bad) { state.lives--; beep(140); } else { state.score++; beep(520 + (state.score % 8) * 60); }
+        return false;
+      }
+      if (s.y > 1.05) { if (!s.bad) { state.lives--; beep(180); } return false; }
+      return true;
+    });
+    if (state.lives <= 0) {
+      state.mode = "over";
+      if (state.score > best) { best = state.score; try { localStorage.setItem("star-catcher-best", best); } catch (e) {} }
+    }
+  }
+
+  function star(x, y, r, color) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+  }
+
+  function draw() {
+    const u = Math.min(W, H) / 100; // one "unit", scales with the window
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0d0b1f"); g.addColorStop(1, "#2a1450");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign = "center"; ctx.fillStyle = "#f4f1ea";
+    if (state.mode === "title" || state.mode === "over") {
+      star(W / 2, H * 0.3, u * 9, "#ffd23f");
+      ctx.font = `900 ${u * 10}px system-ui, sans-serif`;
+      ctx.fillText(state.mode === "title" ? "STAR CATCHER" : "GAME OVER", W / 2, H * 0.52);
+      ctx.font = `600 ${u * 3.6}px system-ui, sans-serif`;
+      ctx.fillText(state.mode === "title" ? "Catch the gold stars. Dodge the red ones." : `Score ${state.score} · Best ${best}`, W / 2, H * 0.6);
+      ctx.fillStyle = "#d7ff3a";
+      ctx.fillText("Tap, click or press Space to " + (state.mode === "title" ? "start" : "play again"), W / 2, H * 0.7);
+      return;
+    }
+
+    state.stars.forEach((s) => star(s.x * W, s.y * H, u * 3, s.bad ? "#ff4d2e" : "#ffd23f"));
+    const cx = state.x * W, cy = 0.88 * H;
+    ctx.fillStyle = "#d7ff3a";
+    ctx.beginPath(); ctx.roundRect(cx - 0.07 * W, cy, 0.14 * W, u * 2.4, u * 1.2); ctx.fill();
+
+    ctx.textAlign = "left"; ctx.fillStyle = "#f4f1ea";
+    ctx.font = `800 ${u * 4}px system-ui, sans-serif`;
+    ctx.fillText(`★ ${state.score}`, u * 3, u * 6);
+    ctx.textAlign = "right";
+    ctx.fillText("♥".repeat(Math.max(0, state.lives)), W - u * 3, u * 6);
+    if (state.paused) {
+      ctx.textAlign = "center"; ctx.font = `900 ${u * 8}px system-ui, sans-serif`;
+      ctx.fillText("PAUSED", W / 2, H / 2);
+      ctx.font = `600 ${u * 3.2}px system-ui, sans-serif`;
+      ctx.fillText("Press P to keep playing", W / 2, H / 2 + u * 6);
+    }
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
