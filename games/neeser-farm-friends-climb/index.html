@@ -721,8 +721,20 @@ html { scrollbar-width: none; }
   for (const type of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel']) {
     addEventListener(type, activity, { capture: true, passive: true });
   }
+  // Esc belongs to the arcade. Hand it to the kiosk page the arcade watches, so the arcade treats it exactly like
+  // any game's Esc (including its "leave this game?" check). If the arcade can't see in (opened from a file),
+  // ask it to exit with its documented message instead.
   addEventListener('keydown', (e) => {
-    if (e.key.startsWith('Esc')) arcade.postMessage({ type: 'arcade:exit' }, '*');   // the arcade's key, not ours
+    if (!e.key.startsWith('Esc') || e.fromGame) return;
+    let arcadeCanSeeIn = true;
+    try { void arcade.document; } catch (err) { arcadeCanSeeIn = false; }
+    if (arcadeCanSeeIn) {
+      const handOff = new parent.KeyboardEvent('keydown', { key: e.key, code: e.code, bubbles: true, cancelable: true });
+      handOff.fromGame = true;
+      parent.document.dispatchEvent(handOff);
+    } else {
+      arcade.postMessage({ type: 'arcade:exit' }, '*');
+    }
   }, true);
 })();
 
@@ -1210,8 +1222,20 @@ html { scrollbar-width: none; }
   for (const type of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel']) {
     addEventListener(type, activity, { capture: true, passive: true });
   }
+  // Esc belongs to the arcade. Hand it to the kiosk page the arcade watches, so the arcade treats it exactly like
+  // any game's Esc (including its "leave this game?" check). If the arcade can't see in (opened from a file),
+  // ask it to exit with its documented message instead.
   addEventListener('keydown', (e) => {
-    if (e.key.startsWith('Esc')) arcade.postMessage({ type: 'arcade:exit' }, '*');   // the arcade's key, not ours
+    if (!e.key.startsWith('Esc') || e.fromGame) return;
+    let arcadeCanSeeIn = true;
+    try { void arcade.document; } catch (err) { arcadeCanSeeIn = false; }
+    if (arcadeCanSeeIn) {
+      const handOff = new parent.KeyboardEvent('keydown', { key: e.key, code: e.code, bubbles: true, cancelable: true });
+      handOff.fromGame = true;
+      parent.document.dispatchEvent(handOff);
+    } else {
+      arcade.postMessage({ type: 'arcade:exit' }, '*');
+    }
   }, true);
 })();
 window.__kioskStart("play");
@@ -3469,7 +3493,7 @@ window.__kioskStart = (mode) => __require(mode === 'play' ? 'main' : 'home');
   for (const type of ['keydown', 'keyup']) {
     window.addEventListener(type, (e) => {
       const w = frame.contentWindow;
-      if (!w) return;
+      if (!w || e.fromGame) return;                            // keys the game handed out stay out here
       w.dispatchEvent(new w.KeyboardEvent(type, { key: e.key, code: e.code, repeat: e.repeat, bubbles: true }));
       if (e.key.startsWith('Arrow') || e.key === ' ' || e.key === 'Enter' || e.key === 'Backspace') e.preventDefault();
     });
