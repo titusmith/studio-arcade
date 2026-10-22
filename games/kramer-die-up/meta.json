@@ -2,7 +2,16 @@
   "title": "Die Up",
   "student": "Alex Kramer",
   "tag": "Arcade",
-  "input": ["mouse", "touch"],
-  "devices": ["desktop", "tablet"],
+  "input": [
+    "mouse",
+    "touch"
+  ],
+  "devices": [
+    "desktop",
+    "tablet",
+    "phone"
+  ],
+  "designedFor": "phone",
+  "orientation": "portrait",
   "instructions": "Swipe up fast, then tap RELEASE at the center.\nTap the catch circle as the ring closes.\nFirst to 15 wins."
 }

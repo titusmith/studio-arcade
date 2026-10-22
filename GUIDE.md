@@ -305,6 +305,7 @@ Common mistakes:
 
 - **The check says files outside games/ changed.** You committed `index.html` or another arcade file. Run `git checkout main -- index.html`, then commit and push.
 - **`git add .` picked up other files.** Only add your own folder: `git add games/<your-folder>`.
+- **The check says more than one game folder changed, or that you added back the sample game.** Your pull request may only touch your own folder. Remove the rest with `git rm -r games/<other-folder>` (or `git checkout main -- games/<other-folder>` if it's a classmate's), then commit and push. Don't restore folders that disappear when you sync your fork; they were removed on purpose.
 - **Push was rejected for a large file.** A file is over 100 MB. Compress it, then commit again.
 
 ## Final checklist

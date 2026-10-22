@@ -40,6 +40,7 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 VALID_INPUT = {"keyboard", "mouse", "touch", "gamepad"}
 VALID_DEVICES = {"desktop", "tablet", "phone"}
 TEXT_EXT = {".html", ".htm", ".js", ".mjs", ".css", ".jsx", ".json"}
+RETIRED = "sample-star-catcher"   # removed from the arcade; pull requests may not add it back
 MAX_TOTAL_MB = 100          # per game folder
 MAX_FILE_MB = 100           # GitHub rejects any single file over 100 MB
 WARN_FILE_MB = 50           # GitHub warns about files over 50 MB
@@ -413,15 +414,28 @@ def main():
                 print(f"         - {p}")
             print("      To undo one, run:  git checkout main -- <file>   then commit and push again.")
             print("      (If you ran check_games.py --write, index.html changed: undo it the same way.)\n")
+        if RETIRED in slugs:
+            print(paint(f"FAIL  this pull request adds back games/{RETIRED}/", "31;1"))
+            print("   x  The sample game was removed from the arcade on purpose. Delete it from your branch:")
+            print(f"         git rm -r games/{RETIRED}   then commit and push again.\n")
+            outside.append(f"games/{RETIRED}/")
+            slugs = [s for s in slugs if s != RETIRED]
         if len(slugs) > 1:
-            print(paint(f"WARN  this pull request touches {len(slugs)} game folders: " + ", ".join(slugs), "33;1"))
-            print("   !  Each student should submit only their own folder.\n")
+            print(paint(f"FAIL  this pull request changes {len(slugs)} game folders: " + ", ".join(slugs), "31;1"))
+            print("   x  A pull request may only add or change ONE game folder: your own.")
+            print("      Undo changes to the other folders:  git checkout main -- games/<folder>")
+            print("      (for a folder that isn't on main at all:  git rm -r games/<folder>)  then commit and push.\n")
+            outside.append("more than one game folder")
         if not slugs:
             print("This pull request doesn't add or change a game folder inside games/.")
             return 1 if outside else 0
     else:
         slugs = sorted(d for d in os.listdir(GAMES_DIR)
                        if os.path.isdir(os.path.join(GAMES_DIR, d)) and not d.startswith((".", "_")) and d != "__MACOSX")
+        if RETIRED in slugs:
+            print(paint(f"SKIP  games/{RETIRED}/ is the retired sample game; it is never added to the arcade.", "33;1"))
+            print(f"      Delete the folder to clear this message:  git rm -r games/{RETIRED}\n")
+            slugs.remove(RETIRED)
     if not slugs:
         print("games/ is empty. Put your game folder inside games/ and run this again.")
         return 2
